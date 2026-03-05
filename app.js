@@ -3,8 +3,14 @@ const LAT = 30.2672; // Austin
 const LON = -97.7431;
 
 async function fetchWeather() {
-    const response = await fetch(`https://api.openweathermap.org/data/2.5/forecast?lat=${LAT}&lon=${LON}&appid=${API_KEY}&units=imperial`);
+    // We call our internal "middleman" API, not OpenWeather directly
+    const response = await fetch(`/api/weather?lat=${LAT}&lon=${LON}`);
     const data = await response.json();
+    
+    if (data.error) {
+        console.error("Weather error:", data.error);
+        return;
+    }
     processForecast(data.list);
 }
 
