@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Austin Lüften</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2c3e50">
+    <script src="app.js" defer></script>
+    <style>
+        body { font-family: -apple-system, sans-serif; text-align: center; background: #f4f7f6; color: #333; padding: 20px; }
+        .card { background: white; border-radius: 15px; padding: 20px; margin: 15px auto; max-width: 400px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .status-good { border-left: 10px solid #27ae60; }
+        .status-bad { border-left: 10px solid #e74c3c; }
+        h1 { color: #2c3e50; }
+        .time-slot { font-weight: bold; font-size: 1.2em; color: #2980b9; }
+    </style>
+</head>
+<body>
+    <h1>Austin Lüften 🪟</h1>
+    <div id="current-weather" class="card">Detecting location...</div>
+    <div id="forecast">
+        <h3>Best Window to Open</h3>
+        <div id="today-slot" class="card">Loading Today...</div>
+        <div id="tomorrow-slot" class="card">Loading Tomorrow...</div>
+    </div>
+</body>
+</html>
