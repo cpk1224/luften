@@ -1,0 +1,15 @@
+{
+  "name": "Austin Lüften",
+  "short_name": "Lüften",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#f4f7f6",
+  "description": "Smart window airing for Central Texas.",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/826/826923.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
