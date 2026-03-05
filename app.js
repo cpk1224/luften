@@ -1,4 +1,4 @@
-const API_KEY = '777994cf70c9bdfce5e5b26178af1601'; 
+const API_KEY = 'openweathermap'; 
 const LAT = 30.2672; // Austin
 const LON = -97.7431;
 
