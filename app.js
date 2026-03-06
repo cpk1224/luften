@@ -3,15 +3,25 @@ const LAT = 30.2672; // Austin
 const LON = -97.7431;
 
 async function fetchWeather() {
-    // We call our internal "middleman" API, not OpenWeather directly
-    const response = await fetch(`/api/weather?lat=${LAT}&lon=${LON}`);
-    const data = await response.json();
-    
-    if (data.error) {
-        console.error("Weather error:", data.error);
-        return;
+    try {
+        const response = await fetch('/api/weather?lat=' + LAT + '&lon=' + LON);
+        const data = await response.json();
+
+        if (data.error || !data.list) {
+            console.error("Server Error:", data);
+            return;
+        }
+
+        processForecast(data.list);
+
+        // UPDATE TIMESTAMP HERE
+        const now = new Date();
+        const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        document.getElementById('last-updated').innerHTML = "Last Updated: " + timeString;
+
+    } catch (err) {
+        console.error("Fetch failed:", err);
     }
-    processForecast(data.list);
 }
 
 function calculateDewPoint(T, RH) {
@@ -54,7 +64,9 @@ function processForecast(list) {
         const avgDP = items.reduce((sum, f) => sum + calculateDewPoint(f.main.temp, f.main.humidity), 0) / items.length;
 
         if (avgTemp > 85) return { error: "Too hot outside. You'll just lose your AC's cold air." };
-        if (avgDP > 65) return { error: "Too humid. High dew point (${avgDP.toFixed(0)}°F) will make your house feel sticky." };
+        if (avgDP > 65) {
+    return { error: "Too humid. High dew point (" + avgDP.toFixed(0) + "°F) will make your house feel sticky." };
+}
         return { error: "Conditions are marginal. Better to keep sealed." };
     };
 
