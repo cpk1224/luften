@@ -20,8 +20,9 @@
     height: 12px;
     border-radius: 50%;
     margin-right: 8px;
-    box-shadow: 0 0 5px rgba(0,0,0,0.2);
+    background-color: #ccc; /* Default gray */
 }
+/* AQI Colors based on OpenWeather standard */
 .aqi-1 { background-color: #00e400; } /* Good */
 .aqi-2 { background-color: #ffff00; } /* Fair */
 .aqi-3 { background-color: #ff7e00; } /* Moderate */
@@ -40,7 +41,7 @@
     </div>
 
     <div class="forecast-section">
-        <h3><span id="aqi-dot-today" class="aqi-indicator"></span>Tomorrow</h3>
+        <h3>Tomorrow</h3>
         <div id="tomorrow-slot" class="card">Checking tomorrow's outlook...</div>
     </div>
     
