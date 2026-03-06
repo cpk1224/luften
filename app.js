@@ -28,20 +28,52 @@ function processForecast(list) {
     const todaySlot = document.getElementById('today-slot');
     const tomorrowSlot = document.getElementById('tomorrow-slot');
 
-    // Filter for best times: Temp < 78 and Dew Point < 62
-    let bestToday = list.find(f => {
-        const dp = calculateDewPoint(f.main.temp, f.main.humidity);
-        return f.main.temp < 78 && dp < 62;
-    });
+    // Helper to find the best slot in a group of forecast items
+    const findBestSlot = (forecasts) => {
+        return forecasts
+            .filter(f => {
+                const dp = calculateDewPoint(f.main.temp, f.main.humidity);
+                // Austin "Safe Zone": Temp < 78 and Dew Point < 62
+                return f.main.temp < 78 && dp < 62;
+            })
+            .sort((a, b) => a.main.temp - b.main.temp)[0]; // Pick the coolest available
+    };
 
-    if (bestToday) {
-        const time = new Date(bestToday.dt * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-        todaySlot.innerHTML = `<span class="time-slot">${time}</span><br>Temp: ${bestToday.main.temp}°F<br>Dew Point: ${calculateDewPoint(bestToday.main.temp, bestToday.main.humidity).toFixed(1)}°F`;
-        todaySlot.className = "card status-good";
-    } else {
-        todaySlot.innerHTML = "Keep windows closed. Austin is too humid today!";
-        todaySlot.className = "card status-bad";
-    }
+    // Get today's and tomorrow's date strings
+    const todayDate = new Date().toLocaleDateString();
+    const tomorrowDate = new Date(Date.now() + 86400000).toLocaleDateString();
+
+    const todayItems = list.filter(i => new Date(i.dt * 1000).toLocaleDateString() === todayDate);
+    const tomorrowItems = list.filter(i => new Date(i.dt * 1000).toLocaleDateString() === tomorrowDate);
+
+    const bestToday = findBestSlot(todayItems);
+    const bestTomorrow = findBestSlot(tomorrowItems);
+
+    const updateUI = (slot, data) => {
+        if (data) {
+            const time = new Date(data.dt * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const dp = calculateDewPoint(data.main.temp, data.main.humidity).toFixed(1);
+            
+            // Calculate Duration: The cooler it is relative to a 75° house, the faster it airs out
+            const tempDiff = 75 - data.main.temp;
+            let duration = "25-30 mins"; // Default
+            if (tempDiff > 15) duration = "5-10 mins (Flash Airing)";
+            else if (tempDiff > 5) duration = "15-20 mins";
+
+            slot.innerHTML = `
+                <span class="time-slot">${time}</span><br>
+                <b>Duration: ${duration}</b><br>
+                Temp: ${data.main.temp}°F | Dew Point: ${dp}°F
+            `;
+            slot.className = "card status-good";
+        } else {
+            slot.innerHTML = "🚫 No safe window. Keep AC on.";
+            slot.className = "card status-bad";
+        }
+    };
+
+    updateUI(todaySlot, bestToday);
+    updateUI(tomorrowSlot, bestTomorrow);
 }
 
 fetchWeather();
