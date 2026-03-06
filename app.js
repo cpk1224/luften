@@ -7,18 +7,11 @@ async function fetchWeather() {
         const response = await fetch('/api/weather?lat=' + LAT + '&lon=' + LON);
         const data = await response.json();
 
-        if (data.error || !data.list) {
-            console.error("Server Error:", data);
-            return;
-        }
+        // data.weather contains the forecast, data.air contains AQI
+        processForecast(data.weather.list, data.air);
 
-        processForecast(data.list);
-
-        // UPDATE TIMESTAMP HERE
         const now = new Date();
-        const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        document.getElementById('last-updated').innerHTML = "Last Updated: " + timeString;
-
+        document.getElementById('last-updated').innerHTML = "Last Updated: " + now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     } catch (err) {
         console.error("Fetch failed:", err);
     }
@@ -45,30 +38,27 @@ function processForecast(list) {
     const tomorrowItems = list.filter(i => new Date(i.dt * 1000).toLocaleDateString() === tomorrowDate);
 
     // This function finds the best time OR tells you why no time is good
-    const getAdvice = (items) => {
-        if (items.length === 0) return { error: "No forecast data available." };
+   const getAdvice = (items, airData) => {
+    // 1. CHECK AIR QUALITY FIRST (OpenWeather AQI: 1=Good, 2=Fair, 3=Moderate, 4=Poor, 5=Very Poor)
+    const aqi = airData ? airData.main.aqi : 1;
+    if (aqi >= 3) {
+        let reason = aqi === 3 ? "Moderate pollution/pollen." : "Poor air quality (Ozone/Smoke).";
+        return { error: "Air Quality Alert: " + reason + " Keep windows shut." };
+    }
 
-        // 1. Try to find a "Safe" slot (Temp < 78, Dew Point < 62)
-        const safeSlots = items.filter(f => {
-            const dp = calculateDewPoint(f.main.temp, f.main.humidity);
-            return f.main.temp < 78 && dp < 62;
-        });
+    // 2. PROCEED TO WEATHER CHECKS
+    const safeSlots = items.filter(f => {
+        const dp = calculateDewPoint(f.main.temp, f.main.humidity);
+        return f.main.temp < 78 && dp < 62;
+    });
 
-        if (safeSlots.length > 0) {
-            // Pick the one with the lowest dew point for maximum freshness
-            return { best: safeSlots.sort((a, b) => calculateDewPoint(a.main.temp, a.main.humidity) - calculateDewPoint(b.main.temp, b.main.humidity))[0] };
-        }
+    if (safeSlots.length > 0) {
+        return { best: safeSlots.sort((a, b) => a.main.temp - b.main.temp)[0] };
+    }
 
-        // 2. If no safe slot, figure out WHY
-        const avgTemp = items.reduce((sum, f) => sum + f.main.temp, 0) / items.length;
-        const avgDP = items.reduce((sum, f) => sum + calculateDewPoint(f.main.temp, f.main.humidity), 0) / items.length;
-
-        if (avgTemp > 85) return { error: "Too hot outside. You'll just lose your AC's cold air." };
-        if (avgDP > 65) {
-    return { error: "Too humid. High dew point (" + avgDP.toFixed(0) + "°F) will make your house feel sticky." };
-}
-        return { error: "Conditions are marginal. Better to keep sealed." };
-    };
+    // ... (rest of your existing "Why it's closed" logic)
+    return { error: "No safe weather window available." };
+};
 
     const renderSlot = (slot, advice) => {
         if (advice.best) {
