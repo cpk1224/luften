@@ -52,41 +52,77 @@ function processForecast(hourlyList) {
     const tomorrowItems = hourlyList.filter(i => new Date(i.time).toLocaleDateString() === tomorrowDate);
 
     const getAdvice = (items) => {
-        if (aqi >= 3 || highestPollen >= 3) {
-            return { error: "Air quality/Pollen too high today." };
+    if (aqi >= 3 || highestPollen >= 3) {
+        return { error: "Air quality/Pollen too high today." };
+    }
+
+    const safeSlots = items.filter(item => {
+        const v = item.values; 
+        const dp = calculateDewPoint(v.temperature, v.humidity);
+        return v.temperature < 78 && dp < 62;
+    });
+
+    if (safeSlots.length > 0) {
+        // --- NEW CONSOLIDATION LOGIC ---
+        const ranges = [];
+        let currentRange = [safeSlots[0]];
+
+        for (let i = 1; i < safeSlots.length; i++) {
+            const prevTime = new Date(safeSlots[i-1].time).getTime();
+            const currTime = new Date(safeSlots[i].time).getTime();
+
+            // Check if this hour is consecutive (3600000ms = 1 hour)
+            if (currTime - prevTime === 3600000) {
+                currentRange.push(safeSlots[i]);
+            } else {
+                ranges.push(currentRange);
+                currentRange = [safeSlots[i]];
+            }
         }
+        ranges.push(currentRange); // Push the last group
+        return { safeRanges: ranges };
+    }
 
-        // Filter using Tomorrow.io's .values property
-        const safeSlots = items.filter(item => {
-            const v = item.values; 
-            const dp = calculateDewPoint(v.temperature, v.humidity);
-            return v.temperature < 78 && dp < 62;
-        });
-
-        return safeSlots.length > 0 ? { safe: safeSlots } : { error: "No safe windows found." };
-    };
+    return { error: "No safe windows found." };
+};
 
     // 2. RENDER MULTIPLE SLOTS (Line 89 area)
     const renderSlot = (container, advice) => {
-        container.innerHTML = ""; 
-        if (advice.safe) {
-            advice.safe.forEach(item => {
-                const v = item.values;
-                const time = new Date(item.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                const dp = calculateDewPoint(v.temperature, v.humidity).toFixed(0);
-                
-                const card = document.createElement('div');
-                card.className = "card status-good";
-                card.innerHTML = "<strong>" + time + "</strong><br><small>" + v.temperature.toFixed(0) + "°F | DP: " + dp + "°</small>";
-                container.appendChild(card);
-            });
-        } else {
-            const errorCard = document.createElement('div');
-            errorCard.className = "card status-bad";
-            errorCard.innerHTML = "🚫 <b>Keep Closed</b><br><small>" + advice.error + "</small>";
-            container.appendChild(errorCard);
-        }
-    };
+    container.innerHTML = ""; 
+
+    if (advice.safeRanges) {
+        advice.safeRanges.forEach(range => {
+            const first = range[0];
+            const last = range[range.length - 1];
+            
+            const startTime = new Date(first.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            
+            // If the range is longer than 1 hour, show "Start - End"
+            let timeDisplay = startTime;
+            if (range.length > 1) {
+                // We add 1 hour to the 'last' slot because a 1pm slot covers 1pm-2pm
+                const endTimeObj = new Date(new Date(last.time).getTime() + 3600000);
+                const endTime = endTimeObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                timeDisplay = `${startTime} - ${endTime}`;
+            }
+
+            const avgTemp = range.reduce((sum, h) => sum + h.values.temperature, 0) / range.length;
+            
+            const card = document.createElement('div');
+            card.className = "card status-good";
+            // Make ranges take up more width if they are long
+            if (range.length > 2) card.style.flex = "1 1 100%";
+
+            card.innerHTML = `
+                <strong>${timeDisplay}</strong><br>
+                <small>Avg Temp: ${avgTemp.toFixed(0)}°F</small>
+            `;
+            container.appendChild(card);
+        });
+    } else {
+        // ... (Error handling stays the same)
+    }
+};
 
     renderSlot(todayContainer, getAdvice(todayItems));
     renderSlot(tomorrowContainer, getAdvice(tomorrowItems));
