@@ -30,8 +30,20 @@ function calculateDewPoint(T, RH) {
 function processForecast(hourlyList) {
     const todayContainer = document.getElementById('today-slots');
     const tomorrowContainer = document.getElementById('tomorrow-slots');
+    const aqiText = document.getElementById('aqi-text');
+    const aqiDot = document.getElementById('aqi-dot-today');
+
+    // 1. SAFE DATA ACCESS (Line 44 area)
+    // Tomorrow.io uses .values.epaIndex and .values.temperature
+    const current = hourlyList[0].values;
+    const aqi = current.epaIndex || 1; 
+    const highestPollen = Math.max(current.treeIndex || 0, current.grassIndex || 0, current.weedIndex || 0);
+
+    const aqiLabels = ["", "Good", "Fair", "Moderate", "Poor", "Very Poor"];
+    const pollenLabels = ["None", "Low", "Moderate", "High", "Very High", "Extreme"];
     
-    // (AQI logic remains the same)
+    if (aqiDot) aqiDot.className = 'aqi-indicator aqi-' + aqi;
+    aqiText.innerHTML = "AQI: " + aqiLabels[aqi] + " | Pollen: " + pollenLabels[highestPollen];
 
     const todayDate = new Date().toLocaleDateString();
     const tomorrowDate = new Date(Date.now() + 86400000).toLocaleDateString();
@@ -40,29 +52,24 @@ function processForecast(hourlyList) {
     const tomorrowItems = hourlyList.filter(i => new Date(i.time).toLocaleDateString() === tomorrowDate);
 
     const getAdvice = (items) => {
-        // Veto Logic (AQI/Pollen checks stay the same)
-        if (aqi >= 3) return { error: "Air pollution too high." };
-        if (highestPollen >= 3) return { error: "Pollen counts too high." };
+        if (aqi >= 3 || highestPollen >= 3) {
+            return { error: "Air quality/Pollen too high today." };
+        }
 
-        // 1. Find ALL safe slots
+        // Filter using Tomorrow.io's .values property
         const safeSlots = items.filter(item => {
-            const v = item.values;
+            const v = item.values; 
             const dp = calculateDewPoint(v.temperature, v.humidity);
             return v.temperature < 78 && dp < 62;
         });
 
-        if (safeSlots.length > 0) {
-            return { safe: safeSlots }; // Return the full list
-        }
-
-        return { error: "No safe windows found." };
+        return safeSlots.length > 0 ? { safe: safeSlots } : { error: "No safe windows found." };
     };
 
+    // 2. RENDER MULTIPLE SLOTS (Line 89 area)
     const renderSlot = (container, advice) => {
-        container.innerHTML = ""; // Clear existing content
-
+        container.innerHTML = ""; 
         if (advice.safe) {
-            // 2. Loop through every safe window and create a card
             advice.safe.forEach(item => {
                 const v = item.values;
                 const time = new Date(item.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -70,17 +77,12 @@ function processForecast(hourlyList) {
                 
                 const card = document.createElement('div');
                 card.className = "card status-good";
-                
-                card.innerHTML = "<strong>" + time + "</strong><br>" +
-                                 "<small>" + v.temperature.toFixed(0) + "°F | DP: " + dp + "°</small>";
-                
+                card.innerHTML = "<strong>" + time + "</strong><br><small>" + v.temperature.toFixed(0) + "°F | DP: " + dp + "°</small>";
                 container.appendChild(card);
             });
         } else {
-            // Show the "Keep Closed" card if nothing is safe
             const errorCard = document.createElement('div');
             errorCard.className = "card status-bad";
-            errorCard.style.width = "100%";
             errorCard.innerHTML = "🚫 <b>Keep Closed</b><br><small>" + advice.error + "</small>";
             container.appendChild(errorCard);
         }
