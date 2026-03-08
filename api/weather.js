@@ -1,26 +1,21 @@
 export default async function handler(req, res) {
-  const API_KEY = process.env.WEATHER_API_KEY;
+  const API_KEY = process.env.TOMORROW_API_KEY;
   const { lat, lon } = req.query;
 
-  // Endpoint 1: Weather Forecast
-  const weatherUrl = `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=imperial`;
-  // Endpoint 2: Current Air Pollution
-  const airUrl = `https://api.openweathermap.org/data/2.5/air_pollution?lat=${lat}&lon=${lon}&appid=${API_KEY}`;
+  // We request hourly data for the next 48 hours
+  const url = `https://api.tomorrow.io/v4/weather/forecast?location=${lat},${lon}&apikey=${API_KEY}&units=imperial`;
 
   try {
-    const [weatherRes, airRes] = await Promise.all([
-      fetch(weatherUrl),
-      fetch(airUrl)
-    ]);
+    const response = await fetch(url);
+    const data = await response.json();
 
-    const weatherData = await weatherRes.json();
-    const airData = await airRes.json();
+    if (!response.ok) {
+        throw new Error(data.message || 'Tomorrow.io API Error');
+    }
 
-    res.status(200).json({
-      weather: weatherData,
-      air: airData.list ? airData.list[0] : null
-    });
+    res.status(200).json(data);
   } catch (error) {
-    res.status(500).json({ error: "Failed to fetch Austin data" });
+    console.error("Server Error:", error);
+    res.status(500).json({ error: error.message });
   }
 }
